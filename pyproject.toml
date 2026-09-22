@@ -1,0 +1,62 @@
+[project]
+name = "mcp-agent-transcriber"
+version = "0.1.0"
+description = "MCP server for video transcription — grab a direct transcript or download audio and transcribe with Whisper, from any common tube platform."
+readme = "README.md"
+authors = [
+    { name = "ChristofMilius" }
+]
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = [
+    "mcp[cli]>=2.0.0",
+    "openai-whisper>=20240930",
+    "torch>=2.9.0",
+    "yt-dlp>=2025.1.0",
+    "youtube-transcript-api>=1.0.0",
+]
+
+[project.scripts]
+mcp-agent-transcriber = "mcp_agent_transcriber:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.10.0",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src"]
+extend-exclude = [".venv", "transcript_output", "logs"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+
+[tool.coverage.run]
+source = ["mcp_agent_transcriber"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]
