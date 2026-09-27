@@ -21,6 +21,7 @@ mcp-agent-transcriber = "mcp_agent_transcriber:main"
 
 [project.optional-dependencies]
 dev = [
+    "pyright>=1.1.400",
     "pytest>=9.0.0",
     "pytest-cov>=7.0.0",
     "ruff>=0.10.0",
