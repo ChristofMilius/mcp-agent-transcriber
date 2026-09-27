@@ -178,6 +178,26 @@ dies. The stub is wrong besides: it declares `skip_download` as `str | None`,
 where yt-dlp tests it for truthiness and documents it as a boolean flag. The
 casts are deliberate, and each carries its reason inline.
 
+## Security advisories
+
+Two Dependabot alerts have been triaged and dismissed, both `not_used`:
+
+| Alert | CVE | Why not used |
+|---|---|---|
+| `torch` | CVE-2025-3000 | The vulnerability is in `torch.jit.script`. This project calls only `torch.cuda.is_available()` (`whisper_engine.py`), and openai-whisper does not route inference through TorchScript. No patched version published. |
+| `setuptools` | CVE-2026-59890 | Transitive build-time dependency of torch. This project builds with `uv_build`, ships no sdists, and never runs setuptools' sdist builder. The CVE is macOS APFS manifest-matching only. |
+
+The `torch` dismissal is the fragile one, because it is a **claim about the
+code** rather than a fixed property of a pinned artifact: the day a TorchScript
+path appears, "not used" is false and Dependabot stays silent, having been told
+to stop looking. `tests/test_security_invariants.py` is what keeps that honest —
+it fails the build if `torch.jit` ever enters `src/`, naming the file, line and
+symbol, and telling you to re-open the alert. It parses the AST rather than
+grepping, so a comment *about* the CVE cannot trip it. The second half of the
+claim — that openai-whisper stays TorchScript-free — is covered by `uv.lock`
+pinning the exact version, so an upgrade that changed it surfaces as a
+reviewable diff.
+
 ## License
 
 MIT © 2026 Christof Milius — this repository ships only hand-authored source
