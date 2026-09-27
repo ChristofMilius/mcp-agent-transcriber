@@ -122,11 +122,14 @@ class TestPickTranscript:
             FakeTranscript("en", True, []),
         ]
         chosen = tr._pick_transcript(picks, None, prefer_auto=True)
+        assert chosen is not None
         assert chosen.language_code == "en" and chosen.is_generated is True
 
     def test_when_no_match_returns_a_transcript_anyway(self):
         picks = [FakeTranscript("fr", True, [])]
-        assert tr._pick_transcript(picks, "en", prefer_auto=False).language_code == "fr"
+        chosen = tr._pick_transcript(picks, "en", prefer_auto=False)
+        assert chosen is not None
+        assert chosen.language_code == "fr"
 
     def test_empty_list(self):
         assert tr._pick_transcript([], "en", True) is None

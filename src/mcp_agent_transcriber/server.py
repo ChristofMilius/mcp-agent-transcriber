@@ -8,6 +8,7 @@ registers the tool surface. Uses mcp 2.x (`mcp.server.mcpserver.MCPServer`).
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from mcp.server.mcpserver import MCPServer
 
@@ -21,6 +22,8 @@ from mcp_agent_transcriber.whisper_engine import WhisperEngine
 logger = logging.getLogger(__name__)
 
 SERVER_NAME = "mcp-agent-transcriber"
+
+Transport = Literal["stdio", "sse", "streamable-http"]
 
 INSTRUCTIONS = """
 Video transcription for agents. Turn any common tube-platform link (YouTube,
@@ -67,16 +70,23 @@ def create_server(ctx: AppContext | None = None) -> MCPServer:
     return server
 
 
-def run(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000) -> None:
+def run(transport: Transport = "stdio", host: str = "127.0.0.1", port: int = 8000) -> None:
     """Build and run the server.
 
     transport: "stdio" (default), "sse", or "streamable-http".
+
+    MCPServer.run() is overloaded with one signature per transport literal, and
+    host/port only exist on the two HTTP ones. Each branch therefore passes its
+    own literal rather than forwarding `transport`: a union of the two HTTP
+    literals matches no single overload.
     """
     server = create_server()
     if transport == "stdio":
         server.run(transport="stdio")
+    elif transport == "sse":
+        server.run(transport="sse", host=host, port=port)
     else:
-        server.run(transport=transport, host=host, port=port)
+        server.run(transport="streamable-http", host=host, port=port)
 
 
-__all__ = ["SERVER_NAME", "build_context", "create_server", "run"]
+__all__ = ["SERVER_NAME", "Transport", "build_context", "create_server", "run"]

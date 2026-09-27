@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
+from typing import Any, cast
 
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import (
@@ -220,7 +221,14 @@ def _grab_subs_ytdlp(
         "no_warnings": True,
         "noprogress": True,
     }
-    with YoutubeDL(opts) as ydl:
+    # cast(): yt-dlp ships no type information of its own, so pyright falls back
+    # to its bundled typeshed stub, where the params argument is a TypedDict.
+    # That stub is wrong here — it declares `skip_download: str | None`, while
+    # yt-dlp tests it for truthiness (`if self.params.get('skip_download')`) and
+    # documents it as a boolean flag. Binding to that stub is not an option: the
+    # stub's `_Params` exists only inside the type checker and importing it at
+    # runtime raises ImportError. The cast confines the workaround to this line.
+    with YoutubeDL(cast(Any, opts)) as ydl:
         try:
             ydl.extract_info(url, download=True)
         except Exception as exc:
@@ -293,17 +301,20 @@ def grab_transcript(
     language: str | None = None,
     prefer_auto: bool = True,
     want_vtt: bool = False,
-    output_dir: Path | None = None,
-    tmp_dir: Path | None = None,
+    *,
+    output_dir: Path,
+    tmp_dir: Path,
 ) -> dict:
     """
     Return an agent-friendly transcript for a video URL without downloading
     the media. YouTube goes through youtube-transcript-api first; every other
     platform (or a YouTube API failure) falls back to the yt-dlp caption pass.
+
+    output_dir and tmp_dir are keyword-only and required, for the same reason
+    as in pipeline.transcribe_video: they used to be `Path | None = None` and
+    were passed straight to `Path()`.
     """
     lang = (language or "").strip() or None
-    output_dir = Path(output_dir)
-    tmp_dir = Path(tmp_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     desc = describe_video(url)

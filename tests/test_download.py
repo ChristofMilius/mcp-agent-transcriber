@@ -65,12 +65,9 @@ class TestDescribeVideo:
         assert "subtitles" in info and "audio_formats" in info
 
     def test_unsupported_url_classified(self, monkeypatch):
-        def boom(*a, **kw):
-            raise UnsupportedError("Unsupported URL: https://weird.example/x")
-
         class BadYDL(FakeYDL):
-            def extract_info(self, url, download=False):
-                boom()
+            def extract_info(self, url, download=False) -> dict:
+                raise UnsupportedError("Unsupported URL: https://weird.example/x")
 
         monkeypatch.setattr(dl, "YoutubeDL", BadYDL)
         result = describe_video("https://weird.example/x")

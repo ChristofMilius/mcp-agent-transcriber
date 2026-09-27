@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError, ExtractorError, UnsupportedError
@@ -53,6 +53,23 @@ def _first_entry(raw: dict) -> dict:
     if raw.get("_type") == "playlist" and raw.get("entries"):
         return raw["entries"][0]
     return raw
+
+
+def _extract_info(ydl: YoutubeDL, url: str, *, download: bool) -> dict:
+    """
+    Run one extract_info pass and normalize its union return type to a mapping.
+
+    yt-dlp declares the result as `_InfoDict | PagedList | list | None`, but every
+    caller in this module treats it as a single info dict. PagedList and list are
+    playlist containers rather than video info, and None means the extractor
+    produced nothing at all, so those cases are raised as a DownloadError for
+    the existing classifier to turn into a static, path-free payload rather than
+    crashing further down on an AttributeError.
+    """
+    raw = ydl.extract_info(url, download=download)
+    if not isinstance(raw, dict):
+        raise DownloadError("extractor returned no info dict")
+    return cast(dict, raw)
 
 
 def safe_info(entry: dict) -> dict:
@@ -125,8 +142,8 @@ def describe_video(url: str) -> dict:
     Returns {"status": "ok", "info": {...}} or a static failure payload.
     """
     try:
-        with YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
-            raw = ydl.extract_info(url, download=False)
+        with YoutubeDL(cast(Any, {"quiet": True, "no_warnings": True, "skip_download": True})) as ydl:
+            raw = _extract_info(ydl, url, download=False)
     except Exception as exc:  # handled / classified below
         return _failure_payload(exc, context="metadata")
 
@@ -170,9 +187,9 @@ def download_audio(
             "preferredcodec": output_format,
         }]
 
-    with YoutubeDL(opts) as ydl:
+    with YoutubeDL(cast(Any, opts)) as ydl:
         try:
-            raw = ydl.extract_info(url, download=True)
+            raw = _extract_info(ydl, url, download=True)
         except Exception as exc:  # classified failure payload
             return _failure_payload(exc, context="download")
 
@@ -180,7 +197,10 @@ def download_audio(
     if not entry.get("id"):
         return {"status": "failed", "reason": "no_entry", "note": "no video entry could be extracted."}
 
-    final = Path(ydl.prepare_filename(entry))
+    # cast(): prepare_filename is declared against the stub's `_InfoDict`, which
+    # exists only inside the type checker (see the note on the params cast in
+    # download_audio). At runtime yt-dlp reads plain keys off the mapping.
+    final = Path(ydl.prepare_filename(cast(Any, entry)))
     if output_format in AUDIO_OUTPUT_FORMATS:
         final = final.with_suffix(f".{output_format}")
     if not final.is_file():

@@ -19,9 +19,9 @@ from mcp_agent_transcriber import __version__
 
 
 def _cmd_serve(args) -> int:
-    from mcp_agent_transcriber.server import run
+    from mcp_agent_transcriber.server import Transport, run
 
-    transport = "streamable-http" if args.http else "stdio"
+    transport: Transport = "streamable-http" if args.http else "stdio"
     try:
         run(transport=transport, host=args.host, port=args.port)
     except KeyboardInterrupt:

@@ -102,13 +102,20 @@ def transcribe_video(
     keep_audio: bool = False,
     want_vtt: bool = True,
     return_segments: bool = True,
-    output_dir: Path | None = None,
-    downloads_dir: Path | None = None,
-    engine: WhisperEngine | None = None,
+    *,
+    output_dir: Path,
+    downloads_dir: Path,
+    engine: WhisperEngine,
 ) -> dict:
-    """Route a video URL to captions and/or Whisper and return the transcript."""
-    output_dir = Path(output_dir)
-    downloads_dir = Path(downloads_dir)
+    """Route a video URL to captions and/or Whisper and return the transcript.
+
+    The three keyword-only parameters are injected dependencies, not routing
+    options, and are deliberately required: every caller supplies them from an
+    AppContext. They were previously `Path | None = None` while the body fed
+    them straight to `Path()`, so omitting one raised TypeError from inside
+    pathlib rather than at the call site. Requiring them puts the failure
+    where the mistake is.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if method not in _METHODS:
