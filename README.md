@@ -151,12 +151,32 @@ artifact), and whitespace normalized.
 
 ```powershell
 uv run ruff check .
+uv run pyright
 uv run pytest -q
 ```
 
 Tests cover config path resolution, caption cleaning, platform discovery,
 yt-dlp metadata/download (mocked), the transcript grabbers (mocked APIs), the
 pipeline routes, and the full tool surface — no network, no model load.
+
+### Type checking
+
+`pyright` resolves imports against the project venv via `[tool.pyright]` in
+`pyproject.toml`. That section is load-bearing: without `venvPath`/`venv` it
+falls back to the system interpreter and reports every third-party import as
+missing, which buries the real findings under hundreds of phantom errors. Keep
+it at 0 errors — the last run surfaced two genuine bugs that the test suite
+passed straight over.
+
+Four call sites use `cast(Any, ...)` around `yt_dlp.YoutubeDL(...)` and
+`ydl.prepare_filename(...)` — three in `download.py`, one in `transcript.py`.
+**Do not "clean these up" by typing the options dict as
+`yt_dlp.YoutubeDL._Params`.** That name exists only inside a typeshed-fallback
+stub bundled with pyright, so the import satisfies the type checker and then
+raises `ImportError` at server startup — the LSP goes green and the server
+dies. The stub is wrong besides: it declares `skip_download` as `str | None`,
+where yt-dlp tests it for truthiness and documents it as a boolean flag. The
+casts are deliberate, and each carries its reason inline.
 
 ## License
 
